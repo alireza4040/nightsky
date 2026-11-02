@@ -1,0 +1,36 @@
+name: BuildNight
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone SDK
+        run: git clone --depth 1 https://github.com/DK22Pac/plugin-sdk.git
+      - name: Setup msbuild
+        uses: microsoft/setup-msbuild@v3
+      - name: Generate projects
+        shell: cmd
+        working-directory: plugin-sdk
+        run: |
+          set PLUGIN_SDK_DIR=%GITHUB_WORKSPACE%\plugin-sdk
+          "tools\generate\Visual Studio.bat"
+      - name: Build SDK library
+        shell: cmd
+        working-directory: plugin-sdk
+        run: |
+          set PLUGIN_SDK_DIR=%GITHUB_WORKSPACE%\plugin-sdk
+          msbuild plugin.slnx /property:Configuration=zDebug /property:Platform="Mixed Platforms" /target:plugin_sa /m /verbosity:minimal
+      - name: Use night code
+        shell: cmd
+        run: copy /Y "%GITHUB_WORKSPACE%\NightMain.cpp" "%GITHUB_WORKSPACE%\plugin-sdk\examples\Test\Main.cpp"
+      - name: Build night plugin
+        shell: cmd
+        working-directory: plugin-sdk
+        run: |
+          set PLUGIN_SDK_DIR=%GITHUB_WORKSPACE%\plugin-sdk
+          msbuild examples\Test\Test.slnx /property:Configuration=Debug /property:Platform=GTA-SA /m /verbosity:minimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NightSky
+          path: plugin-sdk/examples/Test/bin/GTA-SA/Debug/Test.SA.asi
